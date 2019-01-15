@@ -54,12 +54,12 @@ http://www.manythings.org/anki/
 from __future__ import print_function
 import keras
 from keras.models import Model
-from keras.layers import Input, LSTM, Dense
+from keras.layers import Input, LSTM, Dense, Dropout
 import numpy as np
 
 
 batch_size = 64  # Batch size for training.
-epochs = 10  # Number of epochs to train for.
+epochs = 100  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
 num_samples = 10000  # Number of samples to train on.
 # Path to the data txt file on disk.
@@ -73,7 +73,8 @@ input_characters = set()
 target_characters = set()
 with open(data_path, 'r', encoding='utf-8') as f:
     lines = f.read().split('\n')
-for line in lines[: min(num_samples, len(lines) - 1)]:
+shuffle_lines = random.shuffle(lines)
+for line in shuffle_lines[: min(num_samples, len(lines) - 1)]:
     input_text, target_text = line.split('\t')
     # We use "tab" as the "start sequence" character
     # for the targets, and "\n" as "end sequence" character.
@@ -141,8 +142,10 @@ decoder_inputs = Input(shape=(None, num_decoder_tokens))
 decoder_lstm = LSTM(latent_dim, return_sequences=True, return_state=True)
 decoder_outputs, _, _ = decoder_lstm(decoder_inputs,
                                      initial_state=encoder_states)
+decoder_dropout = Dropout(.6)
+dropout_outputs = decoder_dropout(decoder_outputs)                                     
 decoder_dense = Dense(num_decoder_tokens, activation='softmax')
-decoder_outputs = decoder_dense(decoder_outputs)
+decoder_outputs = decoder_dense(dropout_outputs)
 
 # Define the model that will turn
 # `encoder_input_data` & `decoder_input_data` into `decoder_target_data`
